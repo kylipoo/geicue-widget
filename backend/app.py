@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
@@ -7,6 +7,8 @@ import json
 from datetime import datetime
 import uuid
 from dotenv import load_dotenv
+from ai_analysis import process_sentry_logs
+import threading
 
 # Load environment variables from .env file
 load_dotenv()
@@ -331,6 +333,23 @@ async def health_check():
         "langgraph_available": graph is not None,
         "timestamp": datetime.now().isoformat()
     }
+
+@app.post("/process-sentry-logs")
+def process_sentry_logs_endpoint(background_tasks: BackgroundTasks):
+    """Trigger Sentry log processing (AI analysis + Slack alerting)"""
+    background_tasks.add_task(process_sentry_logs)
+    return {"status": "processing started"}
+
+# --- Background task to process Sentry logs every 5 minutes (placeholder) ---
+def schedule_sentry_processing():
+    process_sentry_logs()
+    # Schedule next run in 5 minutes
+    threading.Timer(300, schedule_sentry_processing).start()
+
+# Start background processing when app starts
+import sys
+if "uvicorn" in sys.argv[0]:
+    schedule_sentry_processing()
 
 if __name__ == "__main__":
     import uvicorn
