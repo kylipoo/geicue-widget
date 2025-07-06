@@ -19,7 +19,7 @@ try:
     from langchain_core.prompts import PromptTemplate
     from pydantic import BaseModel as PydanticBaseModel
     from typing import TypedDict, Annotated
-    # from langgraph.checkpoint.memory import MemorySaver  # Not needed without checkpointer
+    from langgraph.checkpoint.memory import MemorySaver
     from langgraph.graph.message import add_messages
 except ImportError as e:
     print(f"Warning: LangGraph components not available: {e}")
@@ -80,12 +80,12 @@ def initialize_langgraph():
             print("Missing required environment variables: API_KEY, BASE_URL, or MODEL_NAME")
             return None, None
         
-        # LangSmith setup (optional) - Disabled due to SSL issues
+        # LangSmith setup (optional)
         print("Setting up LangSmith...")
-        os.environ["LANGSMITH_TRACING_V2"] = "false"  # Disable LangSmith tracing
-        # os.environ["LANGCHAIN_ENDPOINT"] = "https://langsmith.np1.az.cloud.geico.net/api/v1"
-        # os.environ["LANGCHAIN_API_KEY"] = api_key
-        # os.environ["LANGCHAIN_PROJECT"] = "Widget Conversation Agent"
+        os.environ["LANGSMITH_TRACING_V2"] = "true"
+        os.environ["LANGCHAIN_ENDPOINT"] = "https://langsmith.np1.az.cloud.geico.net/api/v1"
+        os.environ["LANGCHAIN_API_KEY"] = api_key
+        os.environ["LANGCHAIN_PROJECT"] = "Widget Conversation Agent"
 
         # Initialize LLM with SSL verification disabled for internal API
         print("Initializing ChatOpenAI...")
@@ -143,7 +143,8 @@ def initialize_langgraph():
         
         # Compile the graph
         print("Compiling graph...")
-        graph = workflow.compile()  # Remove checkpointer to avoid complexity
+        memory = MemorySaver()
+        graph = workflow.compile(checkpointer=memory)
         print("Graph compiled successfully")
         
         print("LangGraph initialization completed successfully!")

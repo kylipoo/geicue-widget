@@ -139,8 +139,9 @@ const useConversation = () => {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [conversationMode, setConversationMode] = useState(false);
+  const [sessionId, setSessionId] = useState(null);
 
-  const sendMessage = async (content) => {
+  const sendMessage = async (content, context = {}, errors = []) => {
     if (!content.trim()) return;
 
     const userMessage = {
@@ -154,9 +155,15 @@ const useConversation = () => {
     setIsLoading(true);
 
     try {
-      // Here you would integrate with your LangGraph backend
-      // For now, we'll simulate a response
-      const response = await simulateAIResponse(content);
+      // Use the conversation service to send message to LangGraph backend
+      const messageContext = {
+        pageType: context?.pageType || "general",
+        errors: errors || [],
+        url: window.location.href,
+        userAgent: navigator.userAgent,
+      };
+
+      const response = await conversationService.sendMessage(content, messageContext);
 
       const aiMessage = {
         id: Date.now() + 1,
@@ -169,25 +176,66 @@ const useConversation = () => {
     } catch (error) {
       console.error("Error sending message:", error);
       Sentry.captureException(error);
+      
+      // Add error message to conversation
+      const errorMessage = {
+        id: Date.now() + 1,
+        type: "ai",
+        content: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.",
+        timestamp: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const simulateAIResponse = async (userInput) => {
-    // Use the conversation service to send message to LangGraph backend
-    const context = {
-      pageType: context?.pageType || "general",
-      errors: errors || [],
-      url: window.location.href,
-      userAgent: navigator.userAgent,
-    };
+  const startConversation = async (context = {}, errors = []) => {
+    try {
+      setIsLoading(true);
+      const messageContext = {
+        pageType: context?.pageType || "general",
+        errors: errors || [],
+        url: window.location.href,
+        userAgent: navigator.userAgent,
+      };
 
-    return await conversationService.sendMessage(userInput, context);
+      const welcomeMessage = await conversationService.startConversation(messageContext);
+      
+      const aiMessage = {
+        id: Date.now(),
+        type: "ai",
+        content: welcomeMessage,
+        timestamp: new Date().toISOString(),
+      };
+
+      setMessages([aiMessage]);
+      setConversationMode(true);
+    } catch (error) {
+      console.error("Error starting conversation:", error);
+      Sentry.captureException(error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const clearConversation = () => {
-    setMessages([]);
+  const clearConversation = async () => {
+    try {
+      await conversationService.clearConversation();
+      setMessages([]);
+    } catch (error) {
+      console.error("Error clearing conversation:", error);
+      // Still clear local messages even if backend call fails
+      setMessages([]);
+    }
+  };
+
+  const endConversation = async () => {
+    try {
+      await conversationService.endConversation();
+    } catch (error) {
+      console.error("Error ending conversation:", error);
+    }
   };
 
   return {
@@ -197,6 +245,8 @@ const useConversation = () => {
     setConversationMode,
     sendMessage,
     clearConversation,
+    startConversation,
+    endConversation,
   };
 };
 
@@ -224,6 +274,8 @@ const Widget = ({
     setConversationMode,
     sendMessage,
     clearConversation,
+    startConversation,
+    endConversation,
   } = useConversation();
 
   useEffect(() => {
@@ -250,6 +302,13 @@ const Widget = ({
       });
     }
   }, [enableContextDetection]);
+
+  // Auto-start conversation when switching to conversation view
+  useEffect(() => {
+    if (currentView === "conversation" && messages.length === 0 && !isLoading) {
+      startConversation(context, errors);
+    }
+  }, [currentView, messages.length, isLoading, context, errors]);
 
   const handleFeedbackChange = (e) => {
     setFeedback(e.target.value);
@@ -310,8 +369,11 @@ const Widget = ({
   const handleConversationInput = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      sendMessage(e.target.value);
-      e.target.value = "";
+      const message = e.target.value.trim();
+      if (message) {
+        sendMessage(message, context, errors);
+        e.target.value = "";
+      }
     }
   };
 
@@ -338,10 +400,16 @@ const Widget = ({
         {enableConversation && (
           <button
             type="button"
-            onClick={() => setCurrentView("conversation")}
+            onClick={async () => {
+              setCurrentView("conversation");
+              if (messages.length === 0) {
+                await startConversation(context, errors);
+              }
+            }}
             style={styles.conversationToggle}
+            disabled={isLoading}
           >
-            💬 Start Conversation
+            {isLoading ? "🔄 Starting..." : "💬 Start Conversation"}
           </button>
         )}
       </div>
@@ -483,7 +551,10 @@ const Widget = ({
         <div style={styles.conversationHeader}>
           <button
             type="button"
-            onClick={() => setCurrentView("feedback")}
+            onClick={async () => {
+              await endConversation();
+              setCurrentView("feedback");
+            }}
             style={styles.backButton}
           >
             ← Back to Feedback
@@ -504,7 +575,7 @@ const Widget = ({
 
       <div style={styles.conversationContainer}>
         <div style={styles.messagesContainer}>
-          {messages.length === 0 ? (
+          {messages.length === 0 && !isLoading ? (
             <div style={styles.welcomeMessage}>
               <p>👋 Hello! I'm your AI assistant. I can help you with:</p>
               <ul>
@@ -536,9 +607,9 @@ const Widget = ({
           {isLoading && (
             <div style={{ ...styles.message, ...styles.aiMessage }}>
               <div style={styles.typingIndicator}>
-                <span></span>
-                <span></span>
-                <span></span>
+                <span style={{ ...styles.typingDot, animationDelay: "-0.32s" }}></span>
+                <span style={{ ...styles.typingDot, animationDelay: "-0.16s" }}></span>
+                <span style={styles.typingDot}></span>
               </div>
             </div>
           )}
@@ -557,9 +628,12 @@ const Widget = ({
               const input = document.querySelector(
                 'textarea[placeholder="Type your message here..."]'
               );
-              if (input && input.value.trim()) {
-                sendMessage(input.value);
-                input.value = "";
+              if (input) {
+                const message = input.value.trim();
+                if (message) {
+                  sendMessage(message, context, errors);
+                  input.value = "";
+                }
               }
             }}
             style={styles.sendButton}
@@ -591,6 +665,27 @@ const messageBase = {
   marginBottom: "12px",
   maxWidth: "80%",
 };
+
+// Add CSS keyframes for typing animation
+const typingKeyframes = `
+  @keyframes typing {
+    0%, 80%, 100% {
+      transform: scale(0.8);
+      opacity: 0.5;
+    }
+    40% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+`;
+
+// Inject the keyframes into the document
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = typingKeyframes;
+  document.head.appendChild(style);
+}
 
 const styles = {
   container: {
@@ -786,15 +881,13 @@ const styles = {
     display: "flex",
     gap: "4px",
     padding: "12px 16px",
-    "& span": {
-      width: "8px",
-      height: "8px",
-      borderRadius: "50%",
-      backgroundColor: "#9ca3af",
-      animation: "typing 1.4s infinite ease-in-out",
-      "&:nth-child(1)": { animationDelay: "-0.32s" },
-      "&:nth-child(2)": { animationDelay: "-0.16s" },
-    },
+  },
+  typingDot: {
+    width: "8px",
+    height: "8px",
+    borderRadius: "50%",
+    backgroundColor: "#9ca3af",
+    animation: "typing 1.4s infinite ease-in-out",
   },
   welcomeMessage: {
     textAlign: "center",
