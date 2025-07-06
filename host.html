@@ -19,18 +19,25 @@
 
       #feedback-button {
         position: fixed;
-        top: 50%;
-        right: 20px;
-        transform: translateY(-50%) rotate(-90deg); /* Rotate the button vertically */
-        transform-origin: right center;
-        background-color: #4caf50;
+        bottom: 32px;
+        right: 32px;
+        width: 56px;
+        height: 56px;
+        background-color: #2563eb;
         color: white;
         border: none;
-        border-radius: 5px;
-        padding: 10px 20px;
+        border-radius: 50%;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         cursor: pointer;
         z-index: 1001;
-        font-size: 16px;
+        font-size: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s;
+      }
+      #feedback-button:hover {
+        background-color: #174ea6;
       }
 
       #close-button {
@@ -53,7 +60,7 @@
   </head>
   <body>
     <h1>Host page for the Geicue widget</h1>
-    <button id="feedback-button">Feedback</button>
+    <button id="feedback-button" title="Feedback">💬</button>
     <div id="vault-widget-container">
       <button id="close-button">×</button>
     </div>
