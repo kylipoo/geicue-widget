@@ -266,6 +266,11 @@ const Widget = ({
   const [suggestions, setSuggestions] = useState([]);
   const [showContextInfo, setShowContextInfo] = useState(false);
   const [currentView, setCurrentView] = useState("feedback"); // 'feedback' or 'conversation'
+  const [issueType, setIssueType] = useState("");
+  const [details, setDetails] = useState("");
+  const [effort, setEffort] = useState(null);
+  const [helpType, setHelpType] = useState("");
+  const [screenshot, setScreenshot] = useState(null); // Placeholder for screenshot logic
 
   const {
     messages,
@@ -377,172 +382,131 @@ const Widget = ({
     }
   };
 
+  // Tab bar
+  const tabBar = (
+    <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', marginBottom: 16 }}>
+      <button
+        style={{
+          flex: 1,
+          padding: '12px 0',
+          background: currentView === 'feedback' ? '#fff' : '#f1f5f9',
+          border: 'none',
+          borderBottom: currentView === 'feedback' ? '2px solid #2563eb' : '2px solid transparent',
+          fontWeight: 600,
+          color: currentView === 'feedback' ? '#2563eb' : '#64748b',
+          cursor: 'pointer',
+        }}
+        onClick={() => setCurrentView('feedback')}
+      >
+        Feedback
+      </button>
+      <button
+        style={{
+          flex: 1,
+          padding: '12px 0',
+          background: currentView === 'conversation' ? '#fff' : '#f1f5f9',
+          border: 'none',
+          borderBottom: currentView === 'conversation' ? '2px solid #2563eb' : '2px solid transparent',
+          fontWeight: 600,
+          color: currentView === 'conversation' ? '#2563eb' : '#64748b',
+          cursor: 'pointer',
+        }}
+        onClick={() => setCurrentView('conversation')}
+      >
+        AI Assistant
+      </button>
+    </div>
+  );
+
+  // Feedback form redesign
   const renderFeedbackView = () => (
-    <>
-      <div style={styles.header}>
-        <h2 style={styles.title}>Share Your Feedback</h2>
-        <p style={styles.subtitle}>
-          {enableContextDetection && context?.pageType
-            ? `Help us improve your ${context.pageType} experience`
-            : "Help us improve your experience"}
-        </p>
-
-        {enableContextDetection && context && (
-          <button
-            type="button"
-            onClick={() => setShowContextInfo(!showContextInfo)}
-            style={styles.contextToggle}
-          >
-            {showContextInfo ? "Hide" : "Show"} Context Info
-          </button>
-        )}
-
-        {enableConversation && (
-          <button
-            type="button"
-            onClick={async () => {
-              setCurrentView("conversation");
-              if (messages.length === 0) {
-                await startConversation(context, errors);
-              }
-            }}
-            style={styles.conversationToggle}
-            disabled={isLoading}
-          >
-            {isLoading ? "🔄 Starting..." : "💬 Start Conversation"}
-          </button>
-        )}
+    <form onSubmit={handleSubmit} style={{ padding: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#174ea6', margin: 0 }}>
+          Need a Hand? <span role="img" aria-label="thinking">🤔</span>
+        </h2>
+        <button type="button" onClick={handleExit} style={{ background: 'none', border: 'none', fontSize: 24, color: '#174ea6', cursor: 'pointer' }}>&times;</button>
       </div>
-
-      {enableContextDetection && showContextInfo && context && (
-        <div style={styles.contextInfo}>
-          <h4 style={styles.contextTitle}>Page Context</h4>
-          <div style={styles.contextDetails}>
-            <p>
-              <strong>Page Type:</strong> {context.pageType}
-            </p>
-            <p>
-              <strong>URL:</strong> {context.url}
-            </p>
-            <p>
-              <strong>Errors Detected:</strong> {errors.length}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {enableContextDetection && suggestions.length > 0 && (
-        <div style={styles.suggestionsContainer}>
-          <p style={styles.suggestionsLabel}>Quick suggestions:</p>
-          <div style={styles.suggestionsList}>
-            {suggestions.slice(0, 3).map((suggestion, index) => (
-              <button
-                key={index}
-                type="button"
-                onClick={() => handleSuggestionClick(suggestion)}
-                style={styles.suggestionButton}
-              >
-                {suggestion}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <form style={styles.form} onSubmit={handleSubmit}>
-        <div style={styles.field}>
-          <label style={styles.label} htmlFor="subject">
-            Category
-          </label>
-          <select
-            id="subject"
-            name="subject"
-            value={subject}
-            onChange={handleSubjectChange}
-            style={styles.select}
-            required
-          >
-            <option value="" disabled>
-              Choose a category
-            </option>
-            <option value="general">General Feedback</option>
-            <option value="technical">Technical Issue</option>
-            <option value="billing">Billing Inquiry</option>
-            <option value="feature">Feature Request</option>
-            <option value="bug">Bug Report</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
-
-        <div style={styles.field}>
-          <label style={styles.label} htmlFor="feedback">
-            Your Feedback
-          </label>
-          <textarea
-            id="feedback"
-            name="feedback"
-            value={feedback}
-            onChange={handleFeedbackChange}
-            style={styles.textarea}
-            placeholder={
-              enableContextDetection && context?.pageType === "payment"
-                ? "Tell us about your payment experience..."
-                : enableContextDetection && errors.length > 0
-                ? "Describe any issues you're experiencing..."
-                : "Tell us about your experience..."
-            }
-            required
-          />
-        </div>
-
-        <div style={styles.ratingSection}>
-          <label style={styles.ratingLabel}>How was your experience?</label>
-          <div style={styles.ratingContainer}>
+      <div style={{ marginBottom: 16, color: '#374151', fontSize: 15 }}>
+        Looks like this step might be tricky. Want to tell us what's going on?
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <label style={{ fontWeight: 500, color: '#374151', marginBottom: 4, display: 'block' }}>What best describes the issue?</label>
+        <select
+          value={issueType}
+          onChange={e => setIssueType(e.target.value)}
+          required
+          style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 15 }}
+        >
+          <option value="">Select an option...</option>
+          <option value="technical">Technical Issue</option>
+          <option value="billing">Billing/Payment</option>
+          <option value="feature">Feature Request</option>
+          <option value="bug">Bug Report</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <label style={{ fontWeight: 500, color: '#374151', marginBottom: 4, display: 'block' }}>Anything else you want to tell us? (optional)</label>
+        <textarea
+          value={details}
+          onChange={e => setDetails(e.target.value)}
+          placeholder="Feel free to share more details..."
+          style={{ width: '100%', minHeight: 60, padding: 10, borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 15 }}
+        />
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <label style={{ fontWeight: 500, color: '#374151', marginBottom: 4, display: 'block' }}>How much effort did this take? (optional)</label>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {['😅', '🙂', '😩', '😡'].map((emoji, idx) => (
             <button
+              key={emoji}
               type="button"
+              onClick={() => setEffort(idx)}
               style={{
-                ...styles.ratingButton,
-                ...(rating === "thumbsUp" ? styles.activeRating : {}),
+                fontSize: 24,
+                background: effort === idx ? '#2563eb' : '#f1f5f9',
+                color: effort === idx ? '#fff' : '#374151',
+                border: 'none',
+                borderRadius: 8,
+                padding: '8px 12px',
+                cursor: 'pointer',
+                outline: effort === idx ? '2px solid #2563eb' : 'none',
               }}
-              onClick={() => handleRating("thumbsUp")}
-              aria-label="Positive experience"
             >
-              <span style={styles.ratingEmoji}>👍</span>
-              <span style={styles.ratingText}>Good</span>
+              {emoji}
             </button>
-            <button
-              type="button"
-              style={{
-                ...styles.ratingButton,
-                ...(rating === "thumbsDown" ? styles.activeRating : {}),
-              }}
-              onClick={() => handleRating("thumbsDown")}
-              aria-label="Negative experience"
-            >
-              <span style={styles.ratingEmoji}>👎</span>
-              <span style={styles.ratingText}>Poor</span>
-            </button>
-          </div>
+          ))}
         </div>
-
-        <div style={styles.buttonContainer}>
-          <button
-            type="button"
-            style={styles.cancelButton}
-            onClick={handleExit}
-          >
-            {secondary_button_label || "Cancel"}
-          </button>
-          <button
-            type="submit"
-            style={styles.submitButton}
-            disabled={!feedback.trim() || !subject || !rating}
-          >
-            {primary_button_label || "Submit Feedback"}
-          </button>
-        </div>
-      </form>
-    </>
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <label style={{ fontWeight: 500, color: '#374151', marginBottom: 4, display: 'block' }}>Screenshot (optional)</label>
+        <button type="button" style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#22c55e', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontWeight: 600, cursor: 'pointer' }} disabled>
+          <span role="img" aria-label="camera">📸</span> Take Screenshot
+        </button>
+      </div>
+      <div style={{ marginBottom: 24 }}>
+        <label style={{ fontWeight: 500, color: '#374151', marginBottom: 4, display: 'block' }}>What would help you right now? (optional)</label>
+        <select
+          value={helpType}
+          onChange={e => setHelpType(e.target.value)}
+          style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #e5e7eb', fontSize: 15 }}
+        >
+          <option value="">Select an option...</option>
+          <option value="call">A call from support</option>
+          <option value="chat">Live chat</option>
+          <option value="faq">FAQ/Help Article</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <button
+        type="submit"
+        style={{ width: '100%', background: '#174ea6', color: '#fff', fontWeight: 700, fontSize: 17, border: 'none', borderRadius: 8, padding: '14px 0', cursor: 'pointer', marginTop: 8 }}
+        disabled={!issueType}
+      >
+        Send
+      </button>
+    </form>
   );
 
   const renderConversationView = () => (
@@ -654,9 +618,8 @@ const Widget = ({
 
   return (
     <div style={styles.container}>
-      {currentView === "feedback"
-        ? renderFeedbackView()
-        : renderConversationView()}
+      {tabBar}
+      {currentView === "feedback" ? renderFeedbackView() : renderConversationView()}
     </div>
   );
 };
