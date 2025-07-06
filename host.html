@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Vault Widget Test</title>
+    <style>
+      #vault-widget-container {
+        display: none; /* Initially hidden */
+        position: fixed;
+        top: 50%;
+        right: 0;
+        transform: translateY(-50%);
+        border: 2px solid black;
+        border-radius: 10px;
+        background-color: white;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        padding: 20px;
+        z-index: 1000;
+      }
+
+      #feedback-button {
+        position: fixed;
+        top: 50%;
+        right: 20px;
+        transform: translateY(-50%) rotate(-90deg); /* Rotate the button vertically */
+        transform-origin: right center;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        padding: 10px 20px;
+        cursor: pointer;
+        z-index: 1001;
+        font-size: 16px;
+      }
+
+      #close-button {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background-color: #f44336;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        cursor: pointer;
+        font-size: 16px;
+        text-align: center;
+        line-height: 30px;
+      }
+    </style>
+    <script src="./dist/vault-widget.iife.js"></script>
+  </head>
+  <body>
+    <h1>Host page for the Geicue widget</h1>
+    <button id="feedback-button">Feedback</button>
+    <div id="vault-widget-container">
+      <button id="close-button">×</button>
+    </div>
+    <script>
+      // Render the widget
+      window.renderMyWidget("vault-widget-container", {
+        secondary_button_label: "Cancel",
+        primary_button_label: "Submit",
+        onSuccess: function (paymentMethodId) {
+          alert("PaymentMethodId:" + paymentMethodId);
+        },
+        onExit: function () {
+          // Close the widget when "Cancel" is clicked
+          const widgetContainer = document.getElementById(
+            "vault-widget-container"
+          );
+          const feedbackButton = document.getElementById("feedback-button");
+          widgetContainer.style.display = "none";
+          feedbackButton.style.display = "block"; // Show feedback button
+        },
+        onError: function (error) {
+          console.error("Error:", error);
+        },
+      });
+
+      // Toggle widget visibility
+      const feedbackButton = document.getElementById("feedback-button");
+      const widgetContainer = document.getElementById("vault-widget-container");
+      const closeButton = document.getElementById("close-button");
+
+      feedbackButton.addEventListener("click", () => {
+        widgetContainer.style.display = "block";
+        feedbackButton.style.display = "none"; // Hide feedback button
+      });
+
+      closeButton.addEventListener("click", () => {
+        widgetContainer.style.display = "none";
+        feedbackButton.style.display = "block"; // Show feedback button
+      });
+    </script>
+  </body>
+</html>
