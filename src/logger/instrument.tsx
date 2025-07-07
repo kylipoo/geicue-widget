@@ -3,7 +3,7 @@ import * as Sentry from "@sentry/react";
 // Only initialize Sentry in browser environment
 if (typeof window !== "undefined") {
   Sentry.init({
-    dsn: "https://d56df2eb7054d876d02ef0656e90f946@geico.my.sentry.io/1228",
+    dsn: "https://9c94623b88006b0d1503e0e81ad3e0a2@o4509624254660608.ingest.us.sentry.io/4509624336384001",
     environment: "development",
     integrations: [
       Sentry.browserTracingIntegration(),

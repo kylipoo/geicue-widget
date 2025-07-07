@@ -315,25 +315,14 @@ const Widget = ({
     }
   }, [currentView, messages.length, isLoading, context, errors]);
 
-  const handleFeedbackChange = (e) => {
-    setFeedback(e.target.value);
-  };
-
-  const handleRating = (value) => {
-    setRating(value);
-  };
-
-  const handleSubjectChange = (e) => {
-    setSubject(e.target.value);
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
     try {
       const feedbackData = {
-        feedback,
-        rating,
-        subject,
+        issueType,   // what best describes the issue
+        details,     // anything else you want to tell us
+        effort,      // how much effort did this take
+        helpType,    // what would help you right now
         context: enableContextDetection ? context : null,
         errors: enableContextDetection ? errors : [],
         timestamp: new Date().toISOString(),
