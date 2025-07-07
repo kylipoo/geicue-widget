@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
@@ -7,11 +7,28 @@ import json
 from datetime import datetime
 import uuid
 from dotenv import load_dotenv
-from ai_analysis import process_sentry_logs
+from ai_analysis import process_sentry_logs, ai_tag_feedback
 import threading
+import sentry_sdk
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Initialize Sentry as early as possible
+SENTRY_DSN = os.getenv("SENTRY_DSN")
+if not SENTRY_DSN:
+    # Optionally, hardcode your DSN here for demo/testing
+    SENTRY_DSN = "https://9c94623b88006b0d1503e0e81ad3e0a2@o4509624254660608.ingest.us.sentry.io/4509624336384001"
+
+sentry_sdk.init(
+    dsn=SENTRY_DSN,
+    environment=os.getenv("SENTRY_ENV", "development"),
+    traces_sample_rate=1.0,
+)
+
+# Send a test event on startup to verify Sentry is working
+sentry_sdk.capture_message("Test event from backend startup", level="info")
+sentry_sdk.flush()
 
 # Import your LangGraph components
 try:
@@ -59,6 +76,16 @@ class ChatResponse(BaseModel):
     response: str
     session_id: str
     timestamp: str
+
+class FeedbackRequest(BaseModel):
+    details: str
+    issueType: Optional[str] = None
+    effort: Optional[int] = None
+    helpType: Optional[str] = None
+    context: Optional[Dict[str, Any]] = None
+    errors: Optional[List[Any]] = None
+    url: Optional[str] = None
+    timestamp: Optional[str] = None
 
 # In-memory storage for conversations (use a proper database in production)
 conversation_store = {}
@@ -339,6 +366,36 @@ def process_sentry_logs_endpoint(background_tasks: BackgroundTasks):
     """Trigger Sentry log processing (AI analysis + Slack alerting)"""
     background_tasks.add_task(process_sentry_logs)
     return {"status": "processing started"}
+
+@app.post("/submit-feedback")
+async def submit_feedback(request: FeedbackRequest):
+    try:
+        # Run AI tagging on the feedback details
+        feedback_text = request.details or ""
+        tags = ai_tag_feedback(feedback_text)
+        # Add other tags if desired (e.g., mark as customer feedback)
+        tags["customer"] = "true"
+        feedback_dict = request.dict()
+        print("[DEBUG] Feedback received:", feedback_dict)
+        print("[DEBUG] AI-generated tags:", tags)
+        # Send event to Sentry with tags and extra data
+        with sentry_sdk.configure_scope() as scope:
+            for k, v in tags.items():
+                scope.set_tag(k, v)
+            scope.set_extra("feedback", feedback_dict)
+        event_id = sentry_sdk.capture_message("Customer's feedback", level="info")
+        sentry_sdk.flush()  # Ensure the event is sent
+        print("Event ID:", event_id)
+        return {
+            "status": "ok",
+            "tags": tags,
+            "feedback": feedback_dict,
+            "sentry_event_id": event_id,
+            "debug": "Sentry event sent successfully with tags."
+        }
+    except Exception as e:
+        print(f"Error in submit_feedback: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # --- Background task to process Sentry logs every 5 minutes (placeholder) ---
 def schedule_sentry_processing():
