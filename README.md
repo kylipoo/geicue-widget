@@ -1,13 +1,28 @@
 # Geicue Widget - Setup Guide
 
+````env
+# Sentry configuration
+SENTRY_DSN=your_sentry_dsn_here
+SENTRY_ENV=development
+
+# OpenAI / LLM configuration
+OPENAI_API_KEY=sk-...         # <-- Put your OpenAI API key here, keep it secret!
+BASE_URL=https://api.openai.com/v1
+MODEL_NAME=gpt-4
+
+# Sentry API integration for feedback analysis
+SENTRY_API_TOKEN=your_sentry_api_token_here
+SENTRY_ORG_SLUG=your_sentry_org_slug
+SENTRY_PROJECT_SLUG=your_sentry_project_slug
+
 ## Prerequisites
 
-- **Python 3.9+**  
+- **Python 3.9+**
   Install via Homebrew (macOS):
 
   ```sh
   brew install python
-  ```
+````
 
 - **Node.js & npm**  
   (If you plan to work with the frontend, ensure Node.js and npm are installed.)
