@@ -70,7 +70,7 @@ def initialize_langgraph():
         print("Starting LangGraph initialization...")
         
         # Get environment variables from .env file
-        api_key = os.getenv("API_KEY")
+        api_key = os.getenv("OPENAI_API_KEY")
         base_url = os.getenv("BASE_URL")
         model_name = os.getenv("MODEL_NAME")
         

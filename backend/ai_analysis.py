@@ -13,6 +13,8 @@ SENTRY_PROJECT_SLUG=feedback
 import os
 import requests
 from dotenv import load_dotenv
+import openai
+from datetime import datetime, timedelta, timezone
 load_dotenv()
 
 def fetch_sentry_events():
@@ -42,21 +44,58 @@ def update_issue_tags(issue_id, tags):
     else:
         print(f"Failed to update tags for issue {issue_id}: {response.text}")
 
+def ai_tag_feedback(feedback_text):
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+    prompt = f"""
+    Analyze the following customer feedback and assign:
+    - theme (e.g., bug, feature, ui, performance, billing, other)
+    - severity (low, medium, high)
+    - urgency (low, medium, high)
+    Feedback: \"{feedback_text}\"
+    Respond in JSON: {{\"theme\": \"...\", \"severity\": \"...\", \"urgency\": \"...\"}}
+    """
+    try:
+        client = openai.OpenAI(api_key=OPENAI_API_KEY)
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0
+        )
+        import json
+        tags = json.loads(response.choices[0].message.content)
+    except Exception as e:
+        print(f"OpenAI tagging failed: {e}")
+        tags = {"theme": "other", "severity": "low", "urgency": "low"}
+    return tags
+
 def auto_tag(event):
-    """AI logic: tag based on message content (placeholder)."""
-    message = event.get("message", "")
-    if "TypeError" in message or "Timeout" in message:
-        return {"theme": "bug", "severity": "high", "urgency": "high"}
-    else:
-        return {"theme": "ui", "severity": "low", "urgency": "low"}
+    """AI logic: tag based on customer feedback using OpenAI."""
+    feedback = event.get("extra", {}).get("details") or event.get("message", "")
+    return ai_tag_feedback(feedback)
 
 def send_slack_alert(event, tags):
     # Placeholder for Slack integration
     print(f"[SLACK ALERT] Urgent issue detected: {event.get('message')} | Tags: {tags}")
 
+def is_recent_event(event, minutes=5):
+    date_str = event.get("dateCreated") or event.get("timestamp")
+    if not date_str:
+        return False
+    try:
+        # Remove 'Z' and parse as UTC
+        if date_str.endswith('Z'):
+            date_str = date_str[:-1]
+        event_time = datetime.fromisoformat(date_str).replace(tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
+        return now - event_time <= timedelta(minutes=minutes)
+    except Exception as e:
+        print(f"Failed to parse event time: {e}")
+        return False
+
 def process_sentry_logs():
     sentry_events = fetch_sentry_events()
-    for event in sentry_events:
+    recent_events = [event for event in sentry_events if is_recent_event(event, minutes=5)]
+    for event in recent_events:
         print("\n--- Sentry Event ---\n", event)  # Print event for debugging group/issue ID
         tags = auto_tag(event)
         print(f"Event {event.get('event_id')} tags: {tags}")
