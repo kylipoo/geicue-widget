@@ -1,14 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>Vault Widget Test</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Geicue Widget Host Test</title>
     <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 40px;
+      }
+      button {
+        margin: 10px 0;
+        padding: 10px 20px;
+        font-size: 16px;
+      }
+      .desc {
+        margin-bottom: 20px;
+      }
       #vault-widget-container {
         display: none; /* Initially hidden */
         position: fixed;
-        top: 50%;
-        right: 0;
-        transform: translateY(-50%);
+        bottom: 32px;
+        right: 32px;
         border: 2px solid black;
         border-radius: 10px;
         background-color: white;
@@ -16,7 +29,6 @@
         padding: 20px;
         z-index: 1000;
       }
-
       #feedback-button {
         position: fixed;
         bottom: 32px;
@@ -27,7 +39,7 @@
         color: white;
         border: none;
         border-radius: 50%;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         cursor: pointer;
         z-index: 1001;
         font-size: 28px;
@@ -39,7 +51,6 @@
       #feedback-button:hover {
         background-color: #174ea6;
       }
-
       #close-button {
         position: absolute;
         top: 10px;
@@ -59,13 +70,34 @@
     <script src="./dist/vault-widget.iife.js"></script>
   </head>
   <body>
-    <h1>Host page for the Geicue widget</h1>
+    <h1>Geicue Widget Host Test</h1>
+    <div class="desc">
+      <p>
+        Click the buttons below to simulate JavaScript errors and test the
+        feedback widget's automatic expansion. The feedback icon stays in the
+        bottom right until clicked or an error occurs.
+      </p>
+    </div>
+    <button onclick="throw new Error('Simulated uncaught error!')">
+      Simulate Uncaught Error</button
+    ><br />
+    <button
+      onclick="Promise.reject(new Error('Simulated unhandled rejection!'))"
+    >
+      Simulate Unhandled Promise Rejection</button
+    ><br />
+    <button
+      onclick="var img = document.createElement('img'); img.src = 'nonexistent.png'; document.body.appendChild(img);"
+    >
+      Simulate Resource Load Error</button
+    ><br />
+
     <button id="feedback-button" title="Feedback">💬</button>
     <div id="vault-widget-container">
       <button id="close-button">×</button>
     </div>
     <script>
-      // Render the widget
+      // Render the widget into the container
       window.renderMyWidget("vault-widget-container", {
         secondary_button_label: "Cancel",
         primary_button_label: "Submit",
@@ -79,7 +111,7 @@
           );
           const feedbackButton = document.getElementById("feedback-button");
           widgetContainer.style.display = "none";
-          feedbackButton.style.display = "block"; // Show feedback button
+          feedbackButton.style.display = "flex"; // Show feedback button
         },
         onError: function (error) {
           console.error("Error:", error);
@@ -98,7 +130,23 @@
 
       closeButton.addEventListener("click", () => {
         widgetContainer.style.display = "none";
-        feedbackButton.style.display = "block"; // Show feedback button
+        feedbackButton.style.display = "flex"; // Show feedback button
+      });
+
+      // Listen for automatic widget expansion on error
+      // The widget bundle should call this when an error is caught
+      // We'll use a MutationObserver as a fallback in case the widget is rendered programmatically
+      window.addEventListener("DOMContentLoaded", () => {
+        // If the widget is shown (e.g., by error), hide the feedback button
+        const observer = new MutationObserver(() => {
+          if (widgetContainer.style.display === "block") {
+            feedbackButton.style.display = "none";
+          }
+        });
+        observer.observe(widgetContainer, {
+          attributes: true,
+          attributeFilter: ["style"],
+        });
       });
     </script>
   </body>
