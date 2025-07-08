@@ -315,7 +315,7 @@ const Widget = ({
     }
   }, [currentView, messages.length, isLoading, context, errors]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const feedbackData = {
@@ -330,14 +330,15 @@ const Widget = ({
       };
 
       console.log("Feedback Submitted:", feedbackData);
-      logger.info("Customer's feedback", {
-        level: "info",
-        extra: feedbackData,
+      // Send feedback to backend for AI tagging and Sentry event creation
+      const response = await fetch("http://localhost:8000/submit-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(feedbackData),
       });
-      Sentry.captureMessage("Customer's feedback", {
-        level: "info",
-        extra: feedbackData,
-      });
+      if (!response.ok) {
+        throw new Error("Failed to submit feedback");
+      }
       onSuccess("Feedback submitted successfully!");
     } catch (error) {
       console.error("Error submitting feedback:", error);
