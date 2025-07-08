@@ -6,7 +6,7 @@ yarn-error.log*
 package-lock.json
 
 # Production builds
-dist/
+
 build/
 *.tgz
 *.tar.gz
@@ -111,7 +111,7 @@ jspm_packages/
 
 # Nuxt.js build / generate output
 .nuxt
-dist
+# dist
 
 # Gatsby files
 .cache/
